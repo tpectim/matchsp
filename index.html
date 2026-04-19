@@ -3,12 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>多模式圖片配對遊戲 (雲端題庫整合版)</title>
+    <title>多模式圖片配對遊戲 (GitHub 題庫整合版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
         body {
@@ -206,13 +203,13 @@
                     
                     <div class="mb-5 p-4 bg-blue-50 border border-blue-200 rounded-lg shadow-sm">
                         <label class="block text-sm text-blue-800 mb-2 font-bold flex items-center gap-2">
-                            ☁️ 從雲端題庫載入 <span class="text-xs font-normal text-blue-600 bg-white px-2 py-0.5 rounded-full border border-blue-200">推薦</span>
+                            ☁️ 從 GitHub 題庫載入 <span class="text-xs font-normal text-blue-600 bg-white px-2 py-0.5 rounded-full border border-blue-200">推薦</span>
                         </label>
                         <div class="flex flex-col sm:flex-row gap-2">
-                            <select id="firebase-theme-select" class="flex-1 p-2 border border-blue-300 rounded bg-white text-sm focus:outline-none focus:border-blue-500 font-bold text-gray-700">
-                                <option value="">正在連線至資料庫...</option>
+                            <select id="github-theme-select" class="flex-1 p-2 border border-blue-300 rounded bg-white text-sm focus:outline-none focus:border-blue-500 font-bold text-gray-700">
+                                <option value="">正在連線至 GitHub 讀取檔案...</option>
                             </select>
-                            <button onclick="loadFromFirebase()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded text-sm transition shadow-sm whitespace-nowrap flex items-center justify-center gap-1">
+                            <button onclick="loadFromGithub()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded text-sm transition shadow-sm whitespace-nowrap flex items-center justify-center gap-1">
                                 ⬇️ 下載題庫
                             </button>
                         </div>
@@ -950,91 +947,83 @@
         });
 
         // ==========================================
-        // Firebase 雲端題庫整合邏輯
+        // GitHub 雲端題庫整合邏輯
         // ==========================================
-        
-        const firebaseConfig = {
-            apiKey: "AIzaSyAW30YA99hzb1rgMfcSySzFSKONF_txy74",
-            authDomain: "picpic-89881.firebaseapp.com",
-            projectId: "picpic-89881",
-            storageBucket: "picpic-89881.firebasestorage.app",
-            messagingSenderId: "555976169158",
-            appId: "1:555976169158:web:f5e05ebc56d95f12b9e9c7"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const collectionName = "question_bank";
+        const githubRepoUrl = "https://api.github.com/repos/tpectim/matchsp/contents/";
 
-        async function initFirebaseThemes() {
-            const selectEl = document.getElementById('firebase-theme-select');
+        async function initGithubThemes() {
+            const selectEl = document.getElementById('github-theme-select');
             try {
-                const snapshot = await db.collection(collectionName).get();
-                if (snapshot.empty) {
-                    selectEl.innerHTML = '<option value="">資料庫目前空空的</option>';
+                // 向 GitHub API 請求目錄資訊
+                const response = await fetch(githubRepoUrl);
+                if (!response.ok) throw new Error("無法讀取 GitHub 儲存庫");
+                
+                const files = await response.json();
+                
+                // 過濾出 .json 檔案
+                const jsonFiles = files.filter(file => file.type === 'file' && file.name.endsWith('.json'));
+
+                if (jsonFiles.length === 0) {
+                    selectEl.innerHTML = '<option value="">找不到任何 JSON 題庫檔案</option>';
                     return;
                 }
 
-                const themes = new Set();
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    if (data.theme) themes.add(data.theme);
-                });
-                
-                selectEl.innerHTML = '<option value="all">載入全部主題 (混合)</option>';
-                Array.from(themes).sort().forEach(theme => {
+                selectEl.innerHTML = '<option value="">請選擇題庫檔案...</option>';
+                jsonFiles.forEach(file => {
                     const option = document.createElement('option');
-                    option.value = theme;
-                    option.textContent = `主題：${theme}`;
+                    // 將真實的下載網址綁定在 value 內
+                    option.value = file.download_url;
+                    // 將檔名當作選項顯示文字 (並稍微修飾去掉 .json 後綴)
+                    const displayName = file.name.replace('.json', '');
+                    option.textContent = `📄 ${displayName}`;
                     selectEl.appendChild(option);
                 });
             } catch (error) {
-                console.error("連線資料庫失敗:", error);
+                console.error("連線 GitHub 失敗:", error);
                 selectEl.innerHTML = '<option value="">連線失敗，請檢查網路</option>';
             }
         }
 
-        async function loadFromFirebase() {
-            const selectEl = document.getElementById('firebase-theme-select');
-            const selectedTheme = selectEl.value;
+        async function loadFromGithub() {
+            const selectEl = document.getElementById('github-theme-select');
+            const downloadUrl = selectEl.value;
+            const selectedText = selectEl.options[selectEl.selectedIndex].text;
             
-            if (!selectedTheme) return;
+            if (!downloadUrl) {
+                alert("請先選擇一個題庫檔案！");
+                return;
+            }
             
-            els.uploadStatus.textContent = '☁️ 從雲端下載圖片中，請稍候...';
+            els.uploadStatus.textContent = `☁️ 正在從 GitHub 下載 ${selectedText}，請稍候...`;
             els.uploadStatus.classList.replace('text-green-600', 'text-gray-600');
             els.startGameBtn.disabled = true;
             
             try {
-                let query = db.collection(collectionName);
-                if (selectedTheme !== 'all') {
-                    query = query.where('theme', '==', selectedTheme);
-                }
+                const response = await fetch(downloadUrl);
+                if (!response.ok) throw new Error("下載失敗");
                 
-                const snapshot = await query.get();
-                if (snapshot.empty) {
-                    els.uploadStatus.textContent = '❌ 找不到該主題的圖片！';
-                    els.uploadStatus.classList.replace('text-gray-600', 'text-red-500');
-                    return;
-                }
+                const data = await response.json();
                 
-                const fetchedDocs = [];
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    if (data.original) {
-                        fetchedDocs.push({ id: doc.id, ...data });
+                // 簡易防呆檢查：是否為陣列且包含 original 屬性
+                if (!Array.isArray(data) || data.length === 0 || !data[0].original) {
+                    throw new Error("JSON 格式不符 (缺少 original 欄位)");
+                }
+
+                els.uploadStatus.textContent = `🔄 下載完成，正在即時運算 ${data.length} 張圖片的影子...`;
+                
+                // 處理並自動補齊缺失的屬性 (包含產生影子)
+                const promises = data.map(async (docData) => {
+                    let shadow = docData.shadow;
+                    // 如果 JSON 中沒有預先建立好影子圖，在此生成
+                    if (!shadow) {
+                        shadow = await generateShadowImage(docData.original);
                     }
-                });
-                
-                els.uploadStatus.textContent = `🔄 下載完成，正在即時運算 ${fetchedDocs.length} 張影子圖...`;
-                
-                // 批次將原圖轉為 Base64 影子圖
-                const promises = fetchedDocs.map(async (docData) => {
-                    const shadowBase64 = await generateShadowImage(docData.original);
                     return {
-                        id: docData.id,
+                        id: docData.id || Math.random().toString(36).substr(2, 9),
                         original: docData.original,
-                        shadow: shadowBase64,
-                        name: docData.name,
-                        theme: docData.theme
+                        shadow: shadow,
+                        name: docData.name || "未命名",
+                        theme: docData.theme || selectedText
                     };
                 });
                 
@@ -1042,17 +1031,18 @@
                 
                 // 更新畫面 UI
                 updateUIWithData();
-                els.uploadStatus.textContent = `✅ 成功載入 ${processedImages.length} 張「${selectedTheme === 'all' ? '全部' : selectedTheme}」圖片！`;
+                els.uploadStatus.textContent = `✅ 成功載入 ${processedImages.length} 張圖片！`;
                 els.uploadStatus.classList.replace('text-gray-600', 'text-green-600');
                 
             } catch (error) {
                 console.error("下載失敗:", error);
-                els.uploadStatus.textContent = '❌ 下載失敗，請檢查網路或資料庫權限。';
+                els.uploadStatus.textContent = `❌ 下載失敗：${error.message}`;
                 els.uploadStatus.classList.replace('text-gray-600', 'text-red-500');
             }
         }
 
-        window.addEventListener('DOMContentLoaded', initFirebaseThemes);
+        // 畫面載入時改為初始化 GitHub 清單
+        window.addEventListener('DOMContentLoaded', initGithubThemes);
 
     </script>
 </body>
