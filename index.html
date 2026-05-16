@@ -183,6 +183,11 @@
             <div class="flex justify-between items-center mb-2">
                 <h1 class="text-2xl font-bold text-gray-800">多模式配對遊戲</h1>
                 <div id="game-controls" class="hidden-section flex items-center gap-3">
+                    <button id="tts-toggle-btn" onclick="toggleTts()" class="p-2 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition" title="開關語音報讀">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M12 18V6a2 2 0 00-3.414-1.414L4 9H2v6h2l4.586 4.414A2 2 0 0012 18z" />
+                        </svg>
+                    </button>
                     <div id="timer-display" class="font-mono text-2xl font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-lg border border-blue-200">
                         00:00
                     </div>
@@ -196,6 +201,29 @@
 
             <div id="status-display" class="text-center text-gray-600 mb-2 h-6 font-medium"></div>
             
+            <div id="in-game-toolbar" class="hidden-section flex flex-wrap justify-center gap-6 bg-blue-50 py-2 px-4 rounded-xl border border-blue-100 mb-3 transition-all duration-300">
+                
+                <div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg shadow-sm border border-gray-100">
+                    <span class="text-sm text-indigo-700 font-bold">🖥️ 投影分割畫面</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="split-mode-toggle" class="sr-only peer" onchange="toggleSplitModeDynamically()">
+                        <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-500"></div>
+                    </label>
+                </div>
+
+                <div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg shadow-sm border border-gray-100">
+                    <span class="text-sm text-pink-600 font-bold">✨ 視覺提示</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="hint-toggle" class="sr-only peer" onchange="toggleHintSettingsDynamically()">
+                        <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-pink-500"></div>
+                    </label>
+                    <div id="hint-delay-wrapper" class="flex items-center gap-1 opacity-50 pointer-events-none transition-opacity ml-1 border-l pl-2 border-gray-200">
+                        <span class="text-xs text-gray-500 font-medium">秒數</span>
+                        <input type="number" id="hint-delay" value="3" min="0" max="10" step="0.5" class="w-14 p-0.5 text-sm border rounded text-center text-gray-700 font-bold" onchange="restartHintTimer()" oninput="restartHintTimer()">
+                    </div>
+                </div>
+            </div>
+
             <div id="upload-section" class="space-y-4 p-6 border border-gray-200 rounded-xl bg-gray-50 flex-1 overflow-y-auto">
                 
                 <div>
@@ -217,7 +245,7 @@
 
                     <div class="flex flex-col md:flex-row gap-4">
                         <div class="flex-1">
-                            <label class="block text-sm text-gray-600 mb-1 font-medium">上傳本機圖片 (自動生成影子)</label>
+                            <label class="block text-sm text-gray-600 mb-1 font-medium">上傳本機圖片 (自動生成影子並抓取檔名)</label>
                             <input type="file" id="image-files" accept="image/*" multiple class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-gray-200 file:text-gray-700 hover:file:bg-gray-300 cursor-pointer border rounded-lg bg-white"/>
                         </div>
                         <div class="flex-1">
@@ -253,27 +281,13 @@
                         </label>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="bg-white p-3 rounded-lg border shadow-sm">
                             <label class="block text-sm text-gray-600 mb-1 font-bold">遊戲組數</label>
                             <select id="pair-count-select" class="block w-full p-2 border border-gray-300 rounded bg-gray-50 focus:border-blue-500">
                                 <option value="0">請先載入圖片...</option>
                             </select>
-                            <p class="text-xs text-gray-400 mt-1">共有 <span id="total-loaded-count">0</span> 張圖片</p>
-                        </div>
-
-                        <div id="setting-hint-panel" class="bg-white p-3 rounded-lg border shadow-sm">
-                            <div class="flex items-center justify-between mb-2">
-                                <span class="text-sm text-gray-600 font-bold">視覺提示 (粉紅框)</span>
-                                <label class="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" id="hint-toggle" class="sr-only peer" onchange="toggleHintSettings()">
-                                    <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-pink-500"></div>
-                                </label>
-                            </div>
-                            <div id="hint-delay-wrapper" class="flex items-center justify-between opacity-50 pointer-events-none transition-opacity">
-                                <span class="text-xs text-gray-600">延遲(秒):</span>
-                                <input type="number" id="hint-delay" value="3" min="0" max="10" step="0.5" class="w-16 p-1 text-sm border rounded text-center">
-                            </div>
+                            <p class="text-xs text-gray-400 mt-1">已選取 <span id="total-loaded-count">0</span> 張圖片</p>
                         </div>
 
                         <div id="setting-distractor-panel" class="bg-white p-3 rounded-lg border shadow-sm hidden-section">
@@ -284,17 +298,6 @@
                             </div>
                             <p class="text-xs text-gray-400 mt-1">例如：3個錯誤 = 4選1</p>
                         </div>
-                    </div>
-                    
-                    <div class="mt-4 bg-indigo-50 p-3 rounded-lg border border-indigo-200">
-                        <div class="flex items-center justify-between">
-                            <span class="text-sm text-indigo-800 font-bold">🖥️ 開啟左右分割同步 (台下顯示視角)</span>
-                            <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="split-mode-toggle" class="sr-only peer">
-                                <div class="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
-                            </label>
-                        </div>
-                        <p class="text-xs text-indigo-600 mt-1">開啟後，遊戲畫面將分為左右兩半，右半部為學生觀看的純顯示畫面，方便投放至大螢幕。</p>
                     </div>
                 </div>
                 
@@ -314,7 +317,14 @@
                     </button>
                 </div>
 
-                <div id="preview-container" class="grid grid-cols-8 gap-1 mt-4 p-2 border rounded bg-white min-h-[50px]"></div>
+                <div id="preview-header" class="hidden flex justify-between items-end mt-4 px-1 border-b pb-2">
+                    <span class="text-sm font-bold text-gray-600">3. 挑選要進行遊戲的圖檔</span>
+                    <div class="flex gap-2">
+                        <button onclick="selectAllImages(true)" class="text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1 rounded">全選</button>
+                        <button onclick="selectAllImages(false)" class="text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1 rounded">全不選</button>
+                    </div>
+                </div>
+                <div id="preview-container" class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 mt-2 p-2 border rounded bg-white min-h-[50px] max-h-[300px] overflow-y-auto"></div>
             </div>
             
             <div id="game-section" class="hidden-section flex-1 relative min-h-[500px]">
@@ -390,6 +400,7 @@
         let totalRounds = 0;
         let hintTimer = null; 
         let isSplitMode = false;
+        let isTtsEnabled = false; 
 
         let memoryCards = [];
         let selectedCards = [];
@@ -404,20 +415,19 @@
             gameSection: document.getElementById('game-section'),
             gameSettings: document.getElementById('game-settings'),
             gameControls: document.getElementById('game-controls'),
+            inGameToolbar: document.getElementById('in-game-toolbar'),
             pairCountSelect: document.getElementById('pair-count-select'),
             totalLoadedCount: document.getElementById('total-loaded-count'),
             uploadStatus: document.getElementById('upload-status'),
             startGameBtn: document.getElementById('start-game-button'),
             exportBtn: document.getElementById('export-btn'),
             previewContainer: document.getElementById('preview-container'),
-            settingHintPanel: document.getElementById('setting-hint-panel'),
+            previewHeader: document.getElementById('preview-header'),
             settingDistractorPanel: document.getElementById('setting-distractor-panel'),
-            hintToggle: document.getElementById('hint-toggle'),
-            hintDelayWrapper: document.getElementById('hint-delay-wrapper'),
-            hintDelayInput: document.getElementById('hint-delay'),
             distractorInput: document.getElementById('distractor-count'),
             cardGrid: document.getElementById('card-grid'),
-            optionsGrid: document.getElementById('options-grid')
+            optionsGrid: document.getElementById('options-grid'),
+            ttsToggleBtn: document.getElementById('tts-toggle-btn')
         };
 
         // --- 同步視圖工具 ---
@@ -468,6 +478,7 @@
             if(isSplitMode) document.getElementById('mirror-' + baseId)?.classList.remove('show');
         }
 
+        // --- 動態分割畫面邏輯 ---
         function initMirrorDOM() {
             const mirrorWrapper = document.getElementById('mirror-container');
             let topHTML = `
@@ -491,7 +502,82 @@
             if(mirrorBtn) mirrorBtn.style.display = 'none';
         }
 
-        // --- 音效 ---
+        function toggleSplitModeDynamically() {
+            isSplitMode = document.getElementById('split-mode-toggle').checked;
+            const splitLayout = document.getElementById('split-layout');
+            const mirrorContainer = document.getElementById('mirror-container');
+            
+            if (isSplitMode) {
+                initMirrorDOM(); // 根據當前 DOM 狀態即時建立鏡像
+                splitLayout.classList.add('xl:flex-row');
+                splitLayout.classList.remove('max-w-[1200px]');
+                splitLayout.classList.add('max-w-[2400px]');
+                mirrorContainer.classList.remove('hidden');
+                mirrorContainer.classList.add('flex');
+                
+                // 同步文字狀態
+                setText('status-display', document.getElementById('status-display').textContent);
+                setText('timer-display', document.getElementById('timer-display').textContent);
+            } else {
+                splitLayout.classList.remove('xl:flex-row');
+                splitLayout.classList.add('max-w-[1200px]');
+                splitLayout.classList.remove('max-w-[2400px]');
+                mirrorContainer.classList.add('hidden');
+                mirrorContainer.classList.remove('flex');
+                mirrorContainer.innerHTML = '';
+            }
+        }
+
+        // --- 動態視覺提示邏輯 ---
+        function toggleHintSettingsDynamically() {
+            const wrapper = document.getElementById('hint-delay-wrapper');
+            const isChecked = document.getElementById('hint-toggle').checked;
+            if (isChecked) {
+                wrapper.classList.remove('opacity-50', 'pointer-events-none');
+                restartHintTimer();
+            } else {
+                wrapper.classList.add('opacity-50', 'pointer-events-none');
+                clearTimeout(hintTimer);
+                document.querySelectorAll('#main-container .hint-target').forEach(el => removeClasses(el, 'hint-target'));
+            }
+        }
+
+        function restartHintTimer() {
+            if (!gameActive || isPaused) return;
+            clearTimeout(hintTimer);
+            document.querySelectorAll('#main-container .hint-target').forEach(el => removeClasses(el, 'hint-target'));
+            
+            if (!document.getElementById('hint-toggle').checked) return;
+
+            const delay = parseFloat(document.getElementById('hint-delay').value) * 1000;
+            
+            if (currentMode === 'memory' || currentMode === 'memory-original') {
+                if (selectedCards.length === 1 && !isProcessingMatch) {
+                    hintTimer = setTimeout(() => {
+                        if (selectedCards.length === 1 && gameActive && !isPaused) {
+                            const targetPair = selectedCards[0].card.pairId;
+                            document.querySelectorAll('#main-container .card').forEach(c => {
+                                const cIdx = c.dataset.idx;
+                                if(!c.classList.contains('eliminated') && c !== selectedCards[0].el && memoryCards[cIdx].pairId === targetPair) {
+                                    addClasses(c, 'hint-target');
+                                }
+                            });
+                        }
+                    }, delay);
+                }
+            } else {
+                if (!isProcessingQuiz) {
+                    hintTimer = setTimeout(() => {
+                        if (!isProcessingQuiz && gameActive && !isPaused) {
+                            const correctBtn = Array.from(document.getElementById('options-grid').children).find(b => b.dataset.isCorrect === 'true');
+                            if (correctBtn) addClasses(correctBtn, 'hint-target');
+                        }
+                    }, delay);
+                }
+            }
+        }
+
+        // --- 音效與 TTS 報讀 ---
         let synth;
         let audioStarted = false;
         function initAudio() {
@@ -510,6 +596,28 @@
             if(type === 'win') synth.triggerAttackRelease(["C4", "E4", "G4", "C5"], "4n");
         }
         document.body.addEventListener('click', initAudio, { once: true });
+
+        function toggleTts() {
+            isTtsEnabled = !isTtsEnabled;
+            if (isTtsEnabled) {
+                els.ttsToggleBtn.classList.replace('bg-gray-200', 'bg-blue-500');
+                els.ttsToggleBtn.classList.replace('text-gray-700', 'text-white');
+                speakText("報讀已開啟");
+            } else {
+                els.ttsToggleBtn.classList.replace('bg-blue-500', 'bg-gray-200');
+                els.ttsToggleBtn.classList.replace('text-white', 'text-gray-700');
+                window.speechSynthesis.cancel();
+            }
+        }
+
+        function speakText(text) {
+            if (!isTtsEnabled || !text || text === "未命名") return;
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'zh-TW';
+            utterance.rate = 1.0;
+            window.speechSynthesis.speak(utterance);
+        }
 
         // --- 工具 ---
         function generateShadowImage(base64Str) {
@@ -536,11 +644,10 @@
             return array;
         }
 
-        // --- UI 控制 ---
+        // --- UI 控制與圖檔選擇 ---
         function toggleModeSettings() {
             const modes = document.getElementsByName('gameMode');
             for(let m of modes) { if(m.checked) currentMode = m.value; }
-            els.settingHintPanel.classList.remove('hidden-section');
             if(currentMode === 'memory' || currentMode === 'memory-original') {
                 els.settingDistractorPanel.classList.add('hidden-section');
             } else {
@@ -548,17 +655,14 @@
             }
         }
 
-        function toggleHintSettings() {
-            if(els.hintToggle.checked) els.hintDelayWrapper.classList.remove('opacity-50', 'pointer-events-none');
-            else els.hintDelayWrapper.classList.add('opacity-50', 'pointer-events-none');
-        }
-
         function showUploadSection() {
             stopTimer();
             clearTimeout(hintTimer); 
+            window.speechSynthesis.cancel();
             els.uploadSection.classList.remove('hidden-section');
             hideSection('game-section');
             hideSection('game-controls');
+            hideSection('in-game-toolbar');
             setText('status-display', "");
             gameActive = false;
 
@@ -572,33 +676,66 @@
         }
 
         function updateUIWithData() {
-            const count = processedImages.length;
-            els.totalLoadedCount.textContent = count;
-            
             els.previewContainer.innerHTML = '';
-            processedImages.forEach(img => {
+            els.previewHeader.classList.remove('hidden');
+
+            processedImages.forEach((img, index) => {
+                if(img.isSelected === undefined) img.isSelected = true; 
+                
                 const el = document.createElement('div');
-                el.className = 'w-full aspect-square border bg-gray-100 rounded overflow-hidden';
-                el.innerHTML = `<img src="${img.original}" class="w-full h-full object-cover">`;
+                el.className = `relative w-full aspect-square border-2 ${img.isSelected ? 'border-blue-500' : 'border-gray-200 opacity-50'} rounded overflow-hidden cursor-pointer transition-all duration-200 bg-white`;
+                
+                el.innerHTML = `
+                    <img src="${img.original}" class="w-full h-full object-cover">
+                    <div class="check-mark absolute top-1 right-1 bg-white rounded-full p-0.5 shadow-sm" style="display: ${img.isSelected ? 'block' : 'none'}">
+                        <svg class="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/></svg>
+                    </div>
+                    <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-60 text-white text-[10px] px-1 py-0.5 truncate text-center">${img.name || '未命名'}</div>
+                `;
+                
+                el.onclick = () => {
+                    img.isSelected = !img.isSelected;
+                    el.classList.toggle('border-blue-500', img.isSelected);
+                    el.classList.toggle('border-gray-200', !img.isSelected);
+                    el.classList.toggle('opacity-50', !img.isSelected);
+                    el.querySelector('.check-mark').style.display = img.isSelected ? 'block' : 'none';
+                    updateAvailablePairs();
+                };
                 els.previewContainer.appendChild(el);
             });
+            updateAvailablePairs();
+            els.exportBtn.disabled = false;
+        }
 
+        function selectAllImages(selectAll) {
+            processedImages.forEach(img => img.isSelected = selectAll);
+            updateUIWithData();
+        }
+
+        function updateAvailablePairs() {
+            const activeImages = processedImages.filter(img => img.isSelected);
+            const activeCount = activeImages.length;
+            els.totalLoadedCount.textContent = activeCount;
             els.pairCountSelect.innerHTML = '';
-            if (count > 0) {
+            
+            if (activeCount > 0) {
                 els.gameSettings.classList.remove('opacity-50', 'pointer-events-none');
-                for(let i=1; i<=count; i++){
+                for(let i=1; i<=activeCount; i++){
                     const opt = document.createElement('option');
                     opt.value = i; opt.textContent = `${i} 組`;
-                    if(i===count) opt.selected = true;
+                    if(i===activeCount) opt.selected = true;
                     els.pairCountSelect.appendChild(opt);
                 }
                 els.startGameBtn.disabled = false;
                 els.startGameBtn.classList.replace('bg-gray-400', 'bg-blue-500');
                 els.startGameBtn.classList.remove('cursor-not-allowed');
-                els.exportBtn.disabled = false;
             } else {
                 els.startGameBtn.disabled = true;
-                els.uploadStatus.textContent = "";
+                els.startGameBtn.classList.replace('bg-blue-500', 'bg-gray-400');
+                els.startGameBtn.classList.add('cursor-not-allowed');
+                const opt = document.createElement('option');
+                opt.value = "0"; opt.textContent = `請至少選擇1張圖片`;
+                els.pairCountSelect.appendChild(opt);
             }
         }
 
@@ -615,46 +752,44 @@
                 reader.onload = async (evt) => {
                     const original = evt.target.result;
                     const shadow = await generateShadowImage(original);
-                    resolve({ original, shadow, id: Math.random().toString(36).substr(2, 9) });
+                    const baseName = file.name.replace(/\.[^/.]+$/, "");
+                    resolve({ 
+                        original, 
+                        shadow, 
+                        id: Math.random().toString(36).substr(2, 9),
+                        name: baseName,
+                        isSelected: true
+                    });
                 };
                 reader.readAsDataURL(file);
             }));
 
-            processedImages = await Promise.all(promises);
+            const newImages = await Promise.all(promises);
+            processedImages = [...processedImages, ...newImages]; 
             updateUIWithData();
-            els.uploadStatus.textContent = `✅ 成功讀取 ${processedImages.length} 張本機圖片！`;
+            els.uploadStatus.textContent = `✅ 成功讀取 ${newImages.length} 張本機圖片！`;
             els.uploadStatus.classList.replace('text-red-500', 'text-green-600');
+            e.target.value = ''; 
         });
 
         // --- 遊戲流程 ---
         function startGame() {
-            if(processedImages.length === 0) return;
+            const activeImages = processedImages.filter(img => img.isSelected);
+            if(activeImages.length === 0) return;
             totalRounds = parseInt(els.pairCountSelect.value);
             
             if (currentMode !== 'memory' && currentMode !== 'memory-original') {
                 const distractorCount = parseInt(els.distractorInput.value);
-                if (processedImages.length < distractorCount + 1) {
-                    alert(`圖片數量不足以產生 ${distractorCount} 個不重複干擾項。\n請上傳更多圖片，或減少干擾數量。`);
+                if (activeImages.length < distractorCount + 1) {
+                    alert(`選取的圖片數量不足以產生 ${distractorCount} 個不重複干擾項。\n請選擇更多圖片，或減少干擾數量。`);
                     return;
                 }
-            }
-
-            isSplitMode = document.getElementById('split-mode-toggle').checked;
-            const splitLayout = document.getElementById('split-layout');
-            const mirrorContainer = document.getElementById('mirror-container');
-            
-            if (isSplitMode) {
-                initMirrorDOM(); 
-                splitLayout.classList.add('xl:flex-row');
-                splitLayout.classList.remove('max-w-[1200px]');
-                splitLayout.classList.add('max-w-[2400px]');
-                mirrorContainer.classList.remove('hidden');
-                mirrorContainer.classList.add('flex');
             }
 
             els.uploadSection.classList.add('hidden-section');
             showSection('game-section');
             showSection('game-controls');
+            showSection('in-game-toolbar');
             hideSection('pause-overlay');
             
             matchesFound = 0;
@@ -666,16 +801,19 @@
             startTimer();
 
             if (currentMode === 'memory' || currentMode === 'memory-original') {
-                initMemoryGame();
+                initMemoryGame(activeImages);
             } else {
-                initNChoiceGame();
+                initNChoiceGame(activeImages);
             }
+
+            // 若分割畫面開關是開啟狀態，啟動即時鏡像
+            toggleSplitModeDynamically();
         }
 
         // ==========================================
         // 模式邏輯 (翻牌 & N選1)
         // ==========================================
-        function initMemoryGame() {
+        function initMemoryGame(activeImages) {
             showSection('memory-game-area');
             hideSection('n-choice-game-area');
             setText('status-display', `找到 ${matchesFound} / ${totalRounds} 對`);
@@ -683,15 +821,15 @@
             memoryCards = [];
             selectedCards = [];
             
-            const deck = shuffle([...processedImages]).slice(0, totalRounds);
+            const deck = shuffle([...activeImages]).slice(0, totalRounds);
             
             deck.forEach((imgObj, idx) => {
                 if (currentMode === 'memory-original') {
-                    memoryCards.push({ id: idx, type: 'original', src: imgObj.original, pairId: imgObj.id });
-                    memoryCards.push({ id: idx, type: 'original', src: imgObj.original, pairId: imgObj.id });
+                    memoryCards.push({ id: idx, type: 'original', src: imgObj.original, pairId: imgObj.id, name: imgObj.name });
+                    memoryCards.push({ id: idx, type: 'original', src: imgObj.original, pairId: imgObj.id, name: imgObj.name });
                 } else {
-                    memoryCards.push({ id: idx, type: 'original', src: imgObj.original, pairId: imgObj.id });
-                    memoryCards.push({ id: idx, type: 'shadow', src: imgObj.shadow, pairId: imgObj.id });
+                    memoryCards.push({ id: idx, type: 'original', src: imgObj.original, pairId: imgObj.id, name: imgObj.name });
+                    memoryCards.push({ id: idx, type: 'shadow', src: imgObj.shadow, pairId: imgObj.id, name: imgObj.name });
                 }
             });
             
@@ -733,24 +871,12 @@
         function handleMemoryClick(el, card) {
             if(isPaused || isProcessingMatch || el.classList.contains('selected') || el.classList.contains('eliminated')) return;
 
+            speakText(card.name); 
+
             addClasses(el, 'selected');
             selectedCards.push({ el, card });
 
-            if(selectedCards.length === 1 && els.hintToggle.checked) {
-                const delay = parseFloat(els.hintDelayInput.value) * 1000;
-                clearTimeout(hintTimer);
-                hintTimer = setTimeout(() => {
-                    if(selectedCards.length === 1 && gameActive && !isPaused) {
-                        const targetPair = selectedCards[0].card.pairId;
-                        document.querySelectorAll('#main-container .card').forEach(c => {
-                            const cIdx = c.dataset.idx;
-                            if(!c.classList.contains('eliminated') && c !== el && memoryCards[cIdx].pairId === targetPair) {
-                                addClasses(c, 'hint-target');
-                            }
-                        });
-                    }
-                }, delay);
-            }
+            if(selectedCards.length === 1) restartHintTimer();
 
             if(selectedCards.length === 2) {
                 isProcessingMatch = true;
@@ -784,10 +910,12 @@
             }
         }
 
-        function initNChoiceGame() {
+        let currentActivePool = [];
+        function initNChoiceGame(activeImages) {
             hideSection('memory-game-area');
             showSection('n-choice-game-area');
-            quizQueue = shuffle([...processedImages]).slice(0, totalRounds);
+            currentActivePool = activeImages;
+            quizQueue = shuffle([...activeImages]).slice(0, totalRounds);
             currentQuestionIndex = 0;
             isProcessingQuiz = false;
             renderQuizRound();
@@ -811,7 +939,7 @@
             }
 
             const distractorCount = parseInt(els.distractorInput.value);
-            const pool = processedImages.filter(img => img.id !== targetObj.id);
+            const pool = currentActivePool.filter(img => img.id !== targetObj.id);
             const distractors = shuffle(pool).slice(0, distractorCount);
             
             let correctSrc, distractorSrcFn;
@@ -822,8 +950,8 @@
             }
             
             let options = [
-                { src: correctSrc, isCorrect: true, id: targetObj.id },
-                ...distractors.map(d => ({ src: distractorSrcFn(d), isCorrect: false, id: d.id }))
+                { src: correctSrc, isCorrect: true, id: targetObj.id, name: targetObj.name },
+                ...distractors.map(d => ({ src: distractorSrcFn(d), isCorrect: false, id: d.id, name: d.name }))
             ];
             options = shuffle(options);
 
@@ -856,20 +984,14 @@
                 }
             });
 
-            if (els.hintToggle.checked) {
-                const delay = parseFloat(els.hintDelayInput.value) * 1000;
-                hintTimer = setTimeout(() => {
-                    if (!isProcessingQuiz && gameActive && !isPaused) {
-                        const correctBtn = Array.from(els.optionsGrid.children).find(b => b.dataset.isCorrect === 'true');
-                        if (correctBtn) addClasses(correctBtn, 'hint-target');
-                    }
-                }, delay);
-            }
+            restartHintTimer();
         }
 
         function handleOptionClick(btn, opt) {
             if(isPaused || isProcessingQuiz) return;
             if(btn.classList.contains('correct') || btn.classList.contains('wrong')) return;
+
+            speakText(opt.name); 
 
             clearTimeout(hintTimer);
             document.querySelectorAll('#main-container .hint-target').forEach(el => removeClasses(el, 'hint-target'));
@@ -911,14 +1033,19 @@
         function togglePause() {
             if(!gameActive) return;
             isPaused = !isPaused;
-            if(isPaused) { showSection('pause-overlay'); clearTimeout(hintTimer); } 
+            if(isPaused) { 
+                showSection('pause-overlay'); 
+                clearTimeout(hintTimer); 
+                window.speechSynthesis.cancel();
+            } 
             else { hideSection('pause-overlay'); }
         }
 
         function openDownloadModal() { document.getElementById('download-modal').classList.add('show'); }
         function exportGameData() {
             if(processedImages.length === 0) return;
-            const blob = new Blob([JSON.stringify(processedImages)], {type: "application/json"});
+            const exportData = processedImages.map(({original, shadow, id, name, theme}) => ({original, shadow, id, name, theme}));
+            const blob = new Blob([JSON.stringify(exportData)], {type: "application/json"});
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url; a.download = `game_data_${new Date().getTime()}.json`;
@@ -932,7 +1059,7 @@
                 try {
                     const data = JSON.parse(evt.target.result);
                     if(Array.isArray(data) && data[0].original) {
-                        processedImages = data;
+                        processedImages = data.map(item => ({...item, isSelected: true}));
                         updateUIWithData();
                         els.uploadStatus.textContent = "✅ JSON 匯入成功！";
                         els.uploadStatus.classList.replace('text-red-500', 'text-green-600');
@@ -954,13 +1081,11 @@
         async function initGithubThemes() {
             const selectEl = document.getElementById('github-theme-select');
             try {
-                // 向 GitHub API 請求目錄資訊
                 const response = await fetch(githubRepoUrl);
                 if (!response.ok) throw new Error("無法讀取 GitHub 儲存庫");
                 
                 const files = await response.json();
                 
-                // 過濾出 .json 檔案
                 const jsonFiles = files.filter(file => file.type === 'file' && file.name.endsWith('.json'));
 
                 if (jsonFiles.length === 0) {
@@ -971,9 +1096,7 @@
                 selectEl.innerHTML = '<option value="">請選擇題庫檔案...</option>';
                 jsonFiles.forEach(file => {
                     const option = document.createElement('option');
-                    // 將真實的下載網址綁定在 value 內
                     option.value = file.download_url;
-                    // 將檔名當作選項顯示文字 (並稍微修飾去掉 .json 後綴)
                     const displayName = file.name.replace('.json', '');
                     option.textContent = `📄 ${displayName}`;
                     selectEl.appendChild(option);
@@ -1004,17 +1127,14 @@
                 
                 const data = await response.json();
                 
-                // 簡易防呆檢查：是否為陣列且包含 original 屬性
                 if (!Array.isArray(data) || data.length === 0 || !data[0].original) {
                     throw new Error("JSON 格式不符 (缺少 original 欄位)");
                 }
 
                 els.uploadStatus.textContent = `🔄 下載完成，正在即時運算 ${data.length} 張圖片的影子...`;
                 
-                // 處理並自動補齊缺失的屬性 (包含產生影子)
                 const promises = data.map(async (docData) => {
                     let shadow = docData.shadow;
-                    // 如果 JSON 中沒有預先建立好影子圖，在此生成
                     if (!shadow) {
                         shadow = await generateShadowImage(docData.original);
                     }
@@ -1023,13 +1143,13 @@
                         original: docData.original,
                         shadow: shadow,
                         name: docData.name || "未命名",
-                        theme: docData.theme || selectedText
+                        theme: docData.theme || selectedText,
+                        isSelected: true 
                     };
                 });
                 
                 processedImages = await Promise.all(promises);
                 
-                // 更新畫面 UI
                 updateUIWithData();
                 els.uploadStatus.textContent = `✅ 成功載入 ${processedImages.length} 張圖片！`;
                 els.uploadStatus.classList.replace('text-gray-600', 'text-green-600');
@@ -1041,7 +1161,6 @@
             }
         }
 
-        // 畫面載入時改為初始化 GitHub 清單
         window.addEventListener('DOMContentLoaded', initGithubThemes);
 
     </script>
